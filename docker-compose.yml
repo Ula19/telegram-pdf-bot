@@ -1,0 +1,61 @@
+services:
+  # PDF-бот
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # URL Local Bot API (контейнер bot-api) — файлы до 2 ГБ
+      BOT_API_URL: http://bot-api:8081
+    labels:
+      - "autoheal=true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bot-api:
+        condition: service_started
+    volumes:
+      # доступ к файлам Local Bot API (путь /var/lib/telegram-bot-api/<token>/...)
+      - bot-api-data:/var/lib/telegram-bot-api
+
+  # Local Bot API — принимает и отдаёт файлы до 2 ГБ без ограничений
+  bot-api:
+    image: aiogram/telegram-bot-api:latest
+    restart: unless-stopped
+    environment:
+      TELEGRAM_API_ID: ${API_ID}
+      TELEGRAM_API_HASH: ${API_HASH}
+      TELEGRAM_LOCAL: 1
+    ports:
+      - "${BOT_API_PORT:-8098}:8081"
+    volumes:
+      - bot-api-data:/var/lib/telegram-bot-api
+
+  # autoheal — автоматически перезапускает контейнеры с unhealthy статусом
+  autoheal:
+    image: willfarrell/autoheal
+    restart: always
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-bot_4_pdf}
+      POSTGRES_USER: ${DB_USER:-bot_4_pdf}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bot_4_pdf} -d ${DB_NAME:-bot_4_pdf}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  bot-api-data:

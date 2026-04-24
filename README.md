@@ -33,15 +33,7 @@ cp .env.example .env
 # ADMIN_IDS      — Telegram ID через запятую
 ```
 
-2. Перед первым запуском разлогинить бота из облачного Bot API
-   (один раз, иначе Local API не получит апдейты):
-
-```bash
-curl "https://api.telegram.org/bot<ТВОЙ_ТОКЕН>/logOut"
-# должен вернуть {"ok":true,"result":true}
-```
-
-3. Запустить:
+2. Запустить:
 
 ```bash
 docker compose up -d --build
